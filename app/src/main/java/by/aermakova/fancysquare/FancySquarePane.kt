@@ -23,9 +23,9 @@ class FancySquarePane @JvmOverloads constructor(
     private val square = Square(
         TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP,
-            30f,
+            50f,
             context.resources.displayMetrics
-        ), 500f, 200f
+        ), 500f, 500f
     )
 
     private val gestureDetector = GestureDetectorCompat(context, MyGestureListener(square, this))

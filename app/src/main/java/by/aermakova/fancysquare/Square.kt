@@ -10,8 +10,6 @@ import androidx.dynamicanimation.animation.FlingAnimation
 import androidx.dynamicanimation.animation.FloatPropertyCompat
 import kotlin.math.min
 
-private const val DEBUG_TAG = "Square"
-
 class Square(var side: Float, var centerX: Float, var centerY: Float) {
 
     private var sqColor: Int = Color.MAGENTA
@@ -115,6 +113,7 @@ class Square(var side: Float, var centerX: Float, var centerY: Float) {
     }
 
     companion object {
+        private const val DEBUG_TAG = "Square"
         private const val FRICTION = 1.5f
         private const val OFFSET = 50f
         private const val SQUARE_TRANSLATION_X = "SquareTranslationX"
