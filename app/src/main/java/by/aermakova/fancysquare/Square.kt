@@ -3,36 +3,18 @@ package by.aermakova.fancysquare
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import android.os.Build
 import android.util.Log
 import android.view.MotionEvent
 import android.view.View
-import android.view.ViewTreeObserver.OnGlobalLayoutListener
-import androidx.dynamicanimation.animation.DynamicAnimation
 import androidx.dynamicanimation.animation.FlingAnimation
-import kotlin.math.abs
-
+import androidx.dynamicanimation.animation.FloatPropertyCompat
+import kotlin.math.min
 
 private const val DEBUG_TAG = "Square"
 
-class Square(var side: Float, var centerX: Float, var centerY: Float, view: View) {
+class Square(var side: Float, var centerX: Float, var centerY: Float) {
 
-    init {
-        view.viewTreeObserver
-            .addOnGlobalLayoutListener(object : OnGlobalLayoutListener {
-                override fun onGlobalLayout() {
-                    maxTranslationX = view.width - side
-                    maxTranslationY = view.height - side
-                    view.viewTreeObserver
-                        .removeOnGlobalLayoutListener(this)
-                }
-            })
-    }
-
-    var maxTranslationX = 0f
-    var maxTranslationY = 0f
-
-    var sqColor: Int = Color.BLUE
+    private var sqColor: Int = Color.MAGENTA
         set(value) {
             field = value
             paint.color = value
@@ -42,6 +24,9 @@ class Square(var side: Float, var centerX: Float, var centerY: Float, view: View
         style = Paint.Style.FILL
         this.color = sqColor
     }
+
+    private var flingX: FlingAnimation? = null
+    private var flingY: FlingAnimation? = null
 
     fun draw(canvas: Canvas?) {
         canvas?.drawRect(
@@ -55,48 +40,84 @@ class Square(var side: Float, var centerX: Float, var centerY: Float, view: View
 
     fun flingAnimation(
         view: View,
-        downEvent: MotionEvent,
-        moveEvent: MotionEvent,
         velocityX: Float,
         velocityY: Float
     ) {
+        flingX = FlingAnimation(this, object : FloatPropertyCompat<Square>(SQUARE_TRANSLATION_X) {
+            override fun setValue(`object`: Square?, value: Float) {
+                `object`?.centerX = value
+                view.invalidate()
+            }
 
-        FlingAnimation(view, DynamicAnimation.TRANSLATION_X).apply {
+            override fun getValue(`object`: Square?): Float {
+                return `object`?.centerX ?: 0f
+            }
+
+        }).apply {
             setStartVelocity(velocityX)
-            setMinValue(MIN_TRANSLATION)
-            setMaxValue(maxTranslationX)
+            setMinValue(side / 2)
+            setMaxValue(view.width.toFloat() - side / 2)
             friction = FRICTION
             start()
         }
 
-        FlingAnimation(view, DynamicAnimation.TRANSLATION_Y).apply {
+        flingY = FlingAnimation(this, object : FloatPropertyCompat<Square>(SQUARE_TRANSLATION_Y) {
+            override fun setValue(`object`: Square?, value: Float) {
+                `object`?.centerY = value
+                view.invalidate()
+            }
+
+            override fun getValue(`object`: Square?): Float {
+                return `object`?.centerY ?: 0f
+            }
+
+        }).apply {
             setStartVelocity(velocityY)
-            setMinValue(MIN_TRANSLATION)
-            setMaxValue(maxTranslationY)
+            setMinValue(side / 2)
+            setMaxValue(view.height.toFloat() - side / 2)
             friction = FRICTION
             start()
         }
     }
 
-    fun redraw(event: MotionEvent) {
-        Log.d(DEBUG_TAG, "redraw x: ${event.x} $maxTranslationX")
-        Log.d(DEBUG_TAG, "redraw y: ${event.y} $maxTranslationY")
-
-        if (event.x > side / 2 && event.x < maxTranslationX) {
-            centerX = event.x
+    fun redraw(moveEvent: MotionEvent, view: View) {
+        centerX = when {
+            moveEvent.x < side / 2 -> side / 2
+            moveEvent.x > view.width - side / 2 -> view.width - side / 2
+            else -> moveEvent.x
         }
-        if (event.y > side / 2 && event.y < maxTranslationY) {
-            centerY = event.y
+        centerY = when {
+            moveEvent.y < side / 2 -> side / 2
+            moveEvent.y > view.height - side / 2 -> view.height - side / 2
+            else -> moveEvent.y
         }
     }
 
-    fun scale(scaleFactor: Float) {
-        side *= scaleFactor
+    fun scale(scaleFactor: Float, view: View) {
+        if (side * scaleFactor > min(view.width, view.height) - OFFSET) {
+            side = min(view.width, view.height).toFloat() - OFFSET
+        } else {
+            side *= scaleFactor
+        }
         Log.d(DEBUG_TAG, "scale side: $side")
     }
 
+    fun cancelAnim() {
+        flingX?.cancel()
+        flingY?.cancel()
+    }
+
+    fun touchOnSquare(event: MotionEvent?): Boolean {
+        return event!!.x > centerX - side
+                && event.x < centerX + side
+                && event.y > centerY - side
+                && event.y < centerY + side
+    }
+
     companion object {
-        private const val MIN_TRANSLATION = 0f
-        private const val FRICTION = 1.1f
+        private const val FRICTION = 1.5f
+        private const val OFFSET = 50f
+        private const val SQUARE_TRANSLATION_X = "SquareTranslationX"
+        private const val SQUARE_TRANSLATION_Y = "SquareTranslationY"
     }
 }

@@ -10,9 +10,6 @@ import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.View
 import androidx.core.view.GestureDetectorCompat
-import androidx.core.view.MotionEventCompat
-import kotlin.math.max
-import kotlin.math.min
 
 private const val DEBUG_TAG = "FancySquarePane"
 
@@ -28,22 +25,24 @@ class FancySquarePane @JvmOverloads constructor(
             TypedValue.COMPLEX_UNIT_DIP,
             30f,
             context.resources.displayMetrics
-        ), 500f, 200f, this
+        ), 500f, 200f
     )
+
     private val gestureDetector = GestureDetectorCompat(context, MyGestureListener(square, this))
     private val scaleDetector = ScaleGestureDetector(context, MyScaleListener(square, this))
 
     override fun onDraw(canvas: Canvas) {
-        Log.d(DEBUG_TAG, "onDraw")
         square.draw(canvas)
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        return if (event.pointerCount > 1) {
-            scaleDetector.onTouchEvent(event)
-        } else {
-            gestureDetector.onTouchEvent(event)
-        }
+        return if (square.touchOnSquare(event)) {
+            if (event.pointerCount > 1) {
+                scaleDetector.onTouchEvent(event)
+            } else {
+                gestureDetector.onTouchEvent(event)
+            }
+        } else super.onTouchEvent(event)
     }
 }
 
@@ -55,7 +54,7 @@ class MyScaleListener(private val square: Square, private val view: View) :
         scaleFactor = detector.scaleFactor
         scaleFactor = 0.5f.coerceAtLeast(scaleFactor.coerceAtMost(2f))
         Log.d(DEBUG_TAG, "scaleFactor $scaleFactor")
-        square.scale(scaleFactor)
+        square.scale(scaleFactor, view)
         view.invalidate()
         return true
     }
@@ -65,17 +64,18 @@ class MyGestureListener(private val square: Square, private val view: View) :
     GestureDetector.SimpleOnGestureListener() {
 
     override fun onDown(event: MotionEvent): Boolean {
+        square.cancelAnim()
         return true
     }
 
     override fun onScroll(
-        event1: MotionEvent?,
-        event2: MotionEvent?,
+        downEvent: MotionEvent?,
+        moveEvent: MotionEvent?,
         distanceX: Float,
         distanceY: Float
     ): Boolean {
         Log.d(DEBUG_TAG, "onScroll")
-        square.redraw(event2!!)
+        square.redraw(moveEvent!!, view)
         view.invalidate()
         return true
     }
@@ -87,7 +87,7 @@ class MyGestureListener(private val square: Square, private val view: View) :
         velocityY: Float
     ): Boolean {
         Log.d(DEBUG_TAG, "onFling")
-        square.flingAnimation(view, event1, event2, velocityX, velocityY)
+        square.flingAnimation(view, velocityX, velocityY)
         return true
     }
 }
